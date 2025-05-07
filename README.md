@@ -15,7 +15,6 @@ Bioconductor 3.20 explicitly supports the whole 4.4 line; sticking to that avoid
 ```
 git clone https://github.com/<your-fork>/CytofBatchAdjust.git
 cd CytofBatchAdjust
-docker build -t batchadjust:0.1 .
 ```
 
 The final image is ~550 MB and contains nothing but R, flowCore, the script, and its shared libraries.
