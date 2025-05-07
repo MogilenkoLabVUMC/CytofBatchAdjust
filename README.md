@@ -1,3 +1,110 @@
+Below is a lean, reproducible build that gives you just enough R + system libraries to compile flowCore, drops all the build-time cruft, and exposes a single command you can script against or open in VS Code Dev Containers.
+
+⸻
+
+## 1  — Minimal Dockerfile
+
+
+**Why R 4.4.3?**
+Bioconductor 3.20 explicitly supports the whole 4.4 line; sticking to that avoids the compilation breakage you can hit on brand-new 4.5.0 today.  ￼ ￼
+
+⸻
+
+## 2  — Build the image
+
+```
+git clone https://github.com/<your-fork>/CytofBatchAdjust.git
+cd CytofBatchAdjust
+docker build -t batchadjust:0.1 .
+```
+
+The final image is ~550 MB and contains nothing but R, flowCore, the script, and its shared libraries.
+
+⸻
+
+## 3  — Running the tool
+
+• Batch / non-interactive
+
+# Assume ./data has FCS files and ./output is empty
+```
+docker run --rm \
+  -v "$PWD/data":/data \
+  -v "$PWD/output":/output \
+  batchadjust:0.1 \
+  basedir='"/data"' \
+  outdir='"/output"' \
+  channelsFile='"/opt/batchadjust/Example/ChannelsToAdjust_example.txt"' \
+  batchKeyword='"Barcode_"' \
+  anchorKeyword='"anchor stim"' \
+  method='"95p"'
+```
+
+Everything after batchadjust are R named arguments—quote them exactly as you would inside an R session.
+
+**• Quick test run**
+
+```
+docker run --rm batchadjust:0.1 '--help'
+```
+
+⸻
+
+## 4  — Interactive development in VS Code
+
+Add a .devcontainer folder in the repo root:
+
+devcontainer.json
+
+{
+  "name": "BatchAdjust Dev",
+  "build": { "dockerfile": "../Dockerfile" },
+  "extensions": [
+    "REditorSupport.r",
+    "ms-vscode-remote.remote-containers"
+  ],
+  "settings": {
+    "terminal.integrated.defaultProfile.linux": "bash"
+  },
+  "postCreateCommand": "R -q -e 'install.packages(\"languageserver\");'"
+}
+
+Open the folder with “Remote-Containers: Re-open in Container”.
+You’ll drop into /workspace, have IntelliSense for R, and can:
+
+source("/opt/batchadjust/BatchAdjust.R")
+BatchAdjust(basedir = "/workspace/ExampleInput",
+            outdir   = "/workspace/Results")
+
+
+⸻
+
+5  — Vignette (“How-to”)
+
+Step	Command	Notes
+Build	docker build -t batchadjust:0.1 .	One-time; ~3 min on a fast link.
+Dry-run / help	docker run --rm batchadjust:0.1 '--help'	Shows available arguments.
+Adjust batches (CLI)	see Section 3	Mount any input/output paths you like.
+Open in VS Code	Remote-Containers → Re-open	For exploratory tweaking, plotting, debugging.
+Update R packages	docker build --no-cache …	Keeps the image immutable—re-build when you actually want fresh CRAN/Bioc bits.
+
+
+⸻
+
+6  — Extra tips
+	•	Pin your Bioconductor snapshot. If you ever do need R ≥ 4.5, wait for Bioconductor 3.22 or install flowCore from source with --merge-multiarch.
+	•	Keep data on the host. By mounting /data and /output you make the container completely stateless—and re-runnable—while still persisting results.
+	•	Custom wrappers. If you frequently call the same parameter set, add a small shell script in your project to hide the long docker run … line.
+
+⸻
+
+You now have a single, minimal image that runs a 2019-era script on a 2025 system—either headless for pipelines or interactively in VS Code—with zero extra weight.
+
+
+
+
+
+
 # BatchAdjust() - CyTOF Batch Adjust
 
 
